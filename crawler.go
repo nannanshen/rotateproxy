@@ -62,7 +62,7 @@ func StartRunCrawler(fofaApiKey, fofaEmail, rule string, pageCount int) {
 		for i := 1; i <= pageCount; i++ {
 			RunCrawler(fofaApiKey, fofaEmail, rule, i)
 		}
-		ticker := time.NewTicker(600 * time.Second)
+		ticker := time.NewTicker(3600 * time.Second)
 		for range ticker.C {
 			for i := 1; i <= pageCount; i++ {
 				RunCrawler(fofaApiKey, fofaEmail, rule, i)
