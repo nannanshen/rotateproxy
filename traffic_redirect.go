@@ -42,10 +42,10 @@ func (c *RedirectClient) Serve() error {
 	if err != nil {
 		return err
 	}
-	//for IsProxyURLBlank() {
-	//	fmt.Println("[*] waiting for crawl proxy...")
-	//	time.Sleep(3 * time.Second)
-	//}
+	for IsProxyURLBlank() {
+		fmt.Println("[*] waiting for crawl proxy...")
+		time.Sleep(3 * time.Second)
+	}
 	for {
 		conn, err := l.Accept()
 		if err != nil {
