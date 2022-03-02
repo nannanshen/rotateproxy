@@ -95,9 +95,21 @@ func checkAlive(timeout int) {
 		go func() {
 			_, _,time_conig := CheckProxyAlive(proxy.URL,proxy.IP,timeout)
 			if time_conig !=10000 {
-				SetProxytime(proxy.URL, time_conig)
+				err = SetProxytime(proxy.URL, time_conig)
+				if err != nil {
+					fmt.Printf("[!] set proxy time error: %v\n", err)
+				}
+				if proxy.Retry > 0 {
+					err = DelProxyURLRetry(proxy.URL)
+					if err != nil {
+						fmt.Printf("[!] del retry error: %v\n", err)
+					}
+				}
 			}else{
-				AddProxyURLRetry(proxy.URL)
+				err = AddProxyURLRetry(proxy.URL)
+				if err != nil {
+					fmt.Printf("[!] add proxy retry error: %v\n", err)
+				}
 			}
 		}()
 	}

@@ -3,6 +3,7 @@ package rotateproxy
 import (
 	"fmt"
 	"regexp"
+	"sync"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -10,6 +11,7 @@ import (
 )
 
 var DB *gorm.DB
+var lock sync.Mutex
 
 type ProxyURL struct {
 	gorm.Model
@@ -43,6 +45,8 @@ func init() {
 }
 
 func CreateProxyURL(url string) error {
+	lock.Lock()
+	defer lock.Unlock()
 	regstr := `\d+\.\d+\.\d+\.\d+`
 	reg, _ := regexp.Compile(regstr)
 	ip := reg.Find([]byte(url))
@@ -59,38 +63,59 @@ func CreateProxyURL(url string) error {
 }
 
 func QueryAvailProxyURL() (proxyURLs []ProxyURL, err error) {
+	lock.Lock()
+	defer lock.Unlock()
 	tx := DB.Where("available = ?", true).Find(&proxyURLs)
 	err = tx.Error
 	return
 }
 
 func QueryProxyURL() (proxyURLs []ProxyURL, err error) {
+	lock.Lock()
+	defer lock.Unlock()
 	tx := DB.Find(&proxyURLs)
 	err = tx.Error
 	return
 }
 
 func SetProxyURLAvail(url string, canBypassGFW bool) error {
+	lock.Lock()
+	defer lock.Unlock()
 	tx := DB.Model(&ProxyURL{}).Where("url = ?", url).Updates(ProxyURL{Retry: 0, Available: true, CanBypassGFW: canBypassGFW})
 	return tx.Error
 }
 func StopProxy(url string) error {
+	lock.Lock()
+	defer lock.Unlock()
 	tx := DB.Model(&ProxyURL{}).Where("url = ?", url).Update("Available",false)
 	return tx.Error
 }
 
 func SetProxytime(url string,timeconfig int) error {
+	lock.Lock()
+	defer lock.Unlock()
 	tx := DB.Model(&ProxyURL{}).Where("url = ?", url).Updates(ProxyURL{CONSUMING: timeconfig,Available: true})
 	return tx.Error
 }
 
 func AddProxyURLRetry(url string) error {
+	lock.Lock()
+	defer lock.Unlock()
 	tx := DB.Model(&ProxyURL{}).Where("url = ?", url).Update("retry", gorm.Expr("retry + 1"))
+	return tx.Error
+}
+
+func DelProxyURLRetry(url string) error {
+	lock.Lock()
+	defer lock.Unlock()
+	tx := DB.Model(&ProxyURL{}).Where("url = ?", url).Update("retry", gorm.Expr("retry - 1"))
 	return tx.Error
 }
 
 
 func RandomProxyURL(regionFlag int) (string, error) {
+	lock.Lock()
+	defer lock.Unlock()
 	var proxyURL ProxyURL
 	var tx *gorm.DB
 	switch regionFlag {
@@ -106,6 +131,8 @@ func RandomProxyURL(regionFlag int) (string, error) {
 
 
 func RandomProxyURL2() (string, error) {
+	lock.Lock()
+	defer lock.Unlock()
 	var proxyURL ProxyURL
 	var tx *gorm.DB
 	tx = DB.Raw(fmt.Sprintf("SELECT * FROM %s WHERE available = 1 ORDER BY time ASC LIMIT 1;", proxyURL.TableName())).Scan(&proxyURL)

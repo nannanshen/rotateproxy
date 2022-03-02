@@ -56,8 +56,66 @@ func (c *RedirectClient) Serve() error {
 	}
 }
 
+func getProxyURL(c *RedirectClient) (key string,err error,cc net.Conn){
+	key, err = RandomProxyURL(c.config.IPRegionFlag)
+	if err != nil {
+		fmt.Printf("没有可用代理\n")
+		return "none",err,nil
+	}
+	key2 := strings.TrimPrefix(key, "socks5://")
+	fmt.Println(key)
+	cc, err = net.DialTimeout("tcp", key2, 500*time.Millisecond)
+	if err != nil {
+		//如果超时。则踢出这个节点
+		fmt.Printf("连接失败\n")
+		go StopProxy(key)
+		go closeConn(cc)
+		fmt.Printf("[!] 连接代理失败了。重新选择节点中 %v\n", key2)
+		err = AddProxyURLRetry(key)
+		if err != nil {
+			fmt.Printf("[!] add proxy retry error: %v\n", err)
+		}
+		key, err, cc = getProxyURL(c)
+	}
+	return key,err,cc
+
+}
+
 
 func (c *RedirectClient) HandleConn(conn net.Conn) {
+	startTime := time.Now().UnixNano()
+	key, err, cc := getProxyURL(c)
+	if key == "none"{
+		closeConn(conn)
+		return
+	}
+	endTime := time.Now().UnixNano()
+	Milliseconds:= int((endTime - startTime) / 1e6)// 毫秒
+	if Milliseconds>30000{
+		fmt.Printf("[!] cannot connect to error2 %v\n", key)
+		StopProxy(key)
+		closeConn(conn)
+		return
+	}
+	go func() {
+		err = transport(conn, cc)
+		if err != nil {
+			fmt.Printf("[!] connect error: %v\n", err)
+			errConn := closeConn(conn)
+			if errConn != nil {
+				fmt.Printf("[!] close connect error: %v\n", errConn)
+			}
+			errConn = closeConn(cc)
+			if errConn != nil {
+				fmt.Printf("[!] close upstream connect error: %v\n", errConn)
+			}
+		}
+	}()
+
+}
+
+
+func (c *RedirectClient) HandleConn3(conn net.Conn) {
 	startTime := time.Now().UnixNano()
 	key, err := RandomProxyURL(c.config.IPRegionFlag)
 	if err != nil {

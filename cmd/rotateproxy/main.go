@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/akkuman/rotateproxy"
+	"rotateproxy"
 )
 
 var (
